@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026 주요업무계획 추진현황 대시보드</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f7f7f8; --canvas:#ffffff; --ink:#18181b; --ink-2:#3f3f46; --muted:#71717a;
+    --line:rgba(24,24,27,.09); --line-2:rgba(24,24,27,.06);
+    --accent:#0f766e; --accent-soft:#ccfbf1; --accent-ink:#0d5c56;
+    --done:#0f766e; --prog:#b45309; --plan:#6b7280;
+    --bar-track:#ececeE; --ring:rgba(15,118,110,.35);
+    --shadow:0 1px 2px rgba(24,24,27,.04),0 8px 24px -12px rgba(24,24,27,.12);
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1200px;margin:0 auto;padding:0 20px}
+  a{color:inherit}
+  .tnum{font-variant-numeric:tabular-nums}
+
+  /* header */
+  header{background:var(--canvas);border-bottom:1px solid var(--line)}
+  .head-in{display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:20px 20px}
+  .brand-mark{width:38px;height:38px;border-radius:10px;background:var(--accent-soft);
+    display:grid;place-items:center;color:var(--accent-ink);flex:0 0 auto}
+  .brand h1{font-size:19px;font-weight:600;letter-spacing:-.01em;margin:0;text-wrap:balance}
+  .brand p{margin:2px 0 0;font-size:13px;color:var(--muted)}
+  .head-actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+  .btn{font:inherit;font-size:13.5px;padding:8px 13px;border-radius:9px;border:1px solid var(--line);
+    background:var(--canvas);color:var(--ink-2);cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+    transition:background .15s ease}
+  .btn:hover{background:#fafafa}
+  .btn:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+  .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn-primary:hover{background:var(--accent-ink)}
+  .btn svg{width:16px;height:16px;flex:0 0 auto}
+
+  main{padding:24px 0 64px}
+  .section-title{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.03em;
+    text-transform:uppercase;margin:0 0 12px}
+
+  /* KPI row */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:0;background:var(--canvas);
+    border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:26px}
+  .kpi{padding:18px 20px;border-right:1px solid var(--line-2)}
+  .kpi:last-child{border-right:0}
+  .kpi .lbl{font-size:12.5px;color:var(--muted);margin:0 0 6px}
+  .kpi .val{font-size:30px;font-weight:600;letter-spacing:-.02em;line-height:1.1}
+  .kpi .val small{font-size:15px;font-weight:500;color:var(--muted);margin-left:3px}
+  .kpi .sub{font-size:12.5px;color:var(--muted);margin-top:5px}
+  .kpi .bar{height:5px;border-radius:99px;background:var(--bar-track);margin-top:11px;overflow:hidden}
+  .kpi .bar>i{display:block;height:100%;border-radius:99px;background:var(--accent)}
+
+  /* two-col */
+  .grid-2{display:grid;grid-template-columns:1.15fr 1fr;gap:20px;margin-bottom:26px}
+  .card{background:var(--canvas);border:1px solid var(--line);border-radius:14px;
+    box-shadow:var(--shadow);padding:18px 20px}
+  .card h2{font-size:15px;font-weight:600;margin:0 0 2px;letter-spacing:-.01em}
+  .card .cap{font-size:12.5px;color:var(--muted);margin:0 0 14px}
+  .chart-box{position:relative;height:300px}
+
+  /* status legend / donut side */
+  .donut-wrap{display:flex;align-items:center;gap:18px}
+  .donut-box{position:relative;width:170px;height:170px;flex:0 0 auto}
+  .legend{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;flex:1;min-width:0}
+  .legend li{display:flex;align-items:center;gap:10px;font-size:14px}
+  .dot{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+  .legend .nm{color:var(--ink-2)}
+  .legend .ct{margin-left:auto;font-weight:600;font-variant-numeric:tabular-nums}
+  .legend .pc{color:var(--muted);width:44px;text-align:right;font-variant-numeric:tabular-nums}
+
+  /* controls */
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+  .search{position:relative;flex:1;min-width:220px}
+  .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--muted)}
+  .search input{width:100%;font:inherit;font-size:14.5px;padding:9px 12px 9px 34px;border-radius:9px;
+    border:1px solid var(--line);background:var(--canvas);color:var(--ink)}
+  .search input:focus{outline:2px solid var(--ring);outline-offset:1px;border-color:transparent}
+  select{font:inherit;font-size:14px;padding:9px 30px 9px 12px;border-radius:9px;border:1px solid var(--line);
+    background:var(--canvas)
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>")
+      no-repeat right 10px center;
+    -webkit-appearance:none;appearance:none;color:var(--ink-2);cursor:pointer}
+  select:focus{outline:2px solid var(--ring);outline-offset:1px}
+  .count-note{font-size:13px;color:var(--muted);margin-left:auto}
+
+  /* task list */
+  .tasks{display:flex;flex-direction:column;gap:8px}
+  .trow{background:var(--canvas);border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+    display:grid;grid-template-columns:1fr auto;gap:6px 14px;box-shadow:var(--shadow)}
+  .trow .main{min-width:0}
+  .trow .meta{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-bottom:5px}
+  .tag{font-size:11.5px;font-weight:500;padding:2px 8px;border-radius:99px;background:#f4f4f5;color:var(--ink-2);white-space:nowrap}
+  .tag.dept{background:var(--accent-soft);color:var(--accent-ink)}
+  .tag.cat{border:1px solid var(--line)}
+  .trow .ttl{font-size:15px;font-weight:500;letter-spacing:-.01em;margin:0;word-break:keep-all}
+  .trow .path{font-size:12.5px;color:var(--muted);margin:3px 0 0}
+  .trow .content{font-size:13px;color:var(--ink-2);margin:8px 0 0;padding-top:8px;border-top:1px solid var(--line-2);word-break:keep-all}
+  .trow .content b{font-weight:600;color:var(--ink)}
+  .trow .docn{font-size:12px;color:var(--muted);margin-top:6px}
+
+  .prog-col{width:150px;flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+  .status-pill{font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;white-space:nowrap}
+  .st-done{background:#d1fae5;color:#065f46}
+  .st-prog{background:#fef3c7;color:#92400e}
+  .st-plan{background:#e5e7eb;color:#374151}
+  .pline{width:100%}
+  .pline .top{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px}
+  .pline .top b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+  .ptrack{height:7px;border-radius:99px;background:var(--bar-track);overflow:hidden}
+  .ptrack>i{display:block;height:100%;border-radius:99px;transition:width .25s ease}
+  .edit-link{font-size:12.5px;color:var(--accent-ink);background:none;border:0;cursor:pointer;padding:2px 0}
+  .edit-link:hover{text-decoration:underline}
+
+  .empty{text-align:center;color:var(--muted);padding:48px 20px;font-size:14.5px}
+
+  /* dept progress table card */
+  .dept-list{display:flex;flex-direction:column}
+  .dept-row{display:grid;grid-template-columns:96px 1fr 74px;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line-2)}
+  .dept-row:last-child{border-bottom:0}
+  .dept-row .dn{font-size:13.5px;font-weight:500}
+  .dept-row .dn small{display:block;color:var(--muted);font-weight:400;font-size:11.5px}
+  .dept-row .dtrack{height:8px;border-radius:99px;background:var(--bar-track);overflow:hidden}
+  .dept-row .dtrack>i{display:block;height:100%;border-radius:99px;background:var(--accent)}
+  .dept-row .dpc{text-align:right;font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums}
+
+  /* modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(24,24,27,.45);display:none;align-items:center;
+    justify-content:center;padding:20px;z-index:50}
+  .modal-bg.on{display:flex}
+  .modal{background:var(--canvas);border-radius:16px;max-width:460px;width:100%;padding:22px 24px;
+    box-shadow:0 24px 60px -12px rgba(0,0,0,.35);max-height:90vh;overflow:auto}
+  .modal h3{font-size:16px;font-weight:600;margin:0 0 4px;word-break:keep-all}
+  .modal .mpath{font-size:12.5px;color:var(--muted);margin:0 0 18px}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:13px;font-weight:500;color:var(--ink-2);margin-bottom:6px}
+  .field select,.field textarea,.field input[type=range]{width:100%}
+  .field textarea{font:inherit;font-size:14px;padding:9px 11px;border-radius:9px;border:1px solid var(--line);
+    resize:vertical;min-height:70px;color:var(--ink)}
+  .field textarea:focus{outline:2px solid var(--ring);outline-offset:1px;border-color:transparent}
+  .range-row{display:flex;align-items:center;gap:12px}
+  .range-row output{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;width:52px;text-align:right}
+  input[type=range]{accent-color:var(--accent)}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:22px}
+  .modified-badge{font-size:11px;color:var(--accent-ink);background:var(--accent-soft);
+    padding:1px 7px;border-radius:99px;font-weight:600}
+
+  footer{color:var(--muted);font-size:12.5px;text-align:center;padding:8px 0 0}
+
+  @media (max-width:880px){
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .kpi:nth-child(2){border-right:0}
+    .kpi:nth-child(1),.kpi:nth-child(2){border-bottom:1px solid var(--line-2)}
+    .grid-2{grid-template-columns:1fr}
+  }
+  @media (max-width:640px){
+    .trow{grid-template-columns:1fr}
+    .prog-col{width:100%;align-items:stretch;flex-direction:row;justify-content:space-between;
+      align-items:center;gap:12px;margin-top:6px;padding-top:10px;border-top:1px solid var(--line-2)}
+    .pline{flex:1}
+    .donut-wrap{flex-direction:column}
+    .count-note{width:100%;margin-left:0}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="head-in">
+    <div class="brand-mark" aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6" rx="1"/><rect x="12" y="8" width="3" height="10" rx="1"/><rect x="17" y="4" width="3" height="14" rx="1"/></svg>
+    </div>
+    <div class="brand">
+      <h1>2026년 주요업무계획 추진현황</h1>
+      <p id="metaline">과제 이행현황 관리 대시보드</p>
+    </div>
+    <div class="head-actions">
+      <button class="btn" id="btnReset" title="내가 수정한 진행상황을 원본으로 되돌립니다">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        원본 복원
+      </button>
+      <button class="btn btn-primary" id="btnExport">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+        CSV 내보내기
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- KPIs -->
+  <section class="kpis" id="kpis" aria-label="핵심 지표"></section>
+
+  <!-- charts -->
+  <div class="grid-2">
+    <div class="card">
+      <h2>부서별 평균 이행률</h2>
+      <p class="cap">부서 내 과제들의 이행률 평균 (막대)과 완료 과제 수</p>
+      <div class="chart-box"><canvas id="deptChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>추진 상태 분포</h2>
+      <p class="cap">전체 과제의 현재 추진 상태</p>
+      <div class="donut-wrap">
+        <div class="donut-box"><canvas id="statusChart"></canvas></div>
+        <ul class="legend" id="statusLegend"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- controls + task list -->
+  <section>
+    <p class="section-title">과제 목록</p>
+    <div class="controls">
+      <div class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input type="search" id="q" placeholder="과제·경영목표·추진내용 검색" aria-label="과제 검색">
+      </div>
+      <select id="fDept" aria-label="부서 필터"><option value="">전체 부서</option></select>
+      <select id="fStatus" aria-label="상태 필터">
+        <option value="">전체 상태</option>
+        <option value="추진완료">추진완료</option>
+        <option value="추진중">추진중</option>
+        <option value="추진예정">추진예정</option>
+      </select>
+      <select id="fSort" aria-label="정렬">
+        <option value="ratio-desc">이행률 높은순</option>
+        <option value="ratio-asc">이행률 낮은순</option>
+        <option value="dept">부서순</option>
+      </select>
+      <span class="count-note" id="countNote"></span>
+    </div>
+    <div class="tasks" id="taskList"></div>
+  </section>
+
+  <footer id="footer"></footer>
+</main>
+
+<!-- edit modal -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h3 id="mTitle"></h3>
+    <p class="mpath" id="mPath"></p>
+    <div class="field">
+      <label for="mStatus">추진 상태</label>
+      <select id="mStatus">
+        <option value="추진예정">추진예정</option>
+        <option value="추진중">추진중</option>
+        <option value="추진완료">추진완료</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="mRatio">이행률</label>
+      <div class="range-row">
+        <input type="range" id="mRatio" min="0" max="100" step="5">
+        <output id="mRatioOut">0%</output>
+      </div>
+    </div>
+    <div class="field">
+      <label for="mContent">추진내용 / 메모</label>
+      <textarea id="mContent" placeholder="진행 상황을 기록하세요"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="mCancel">취소</button>
+      <button class="btn btn-primary" id="mSave">저장</button>
+    </div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+(function(){
+  "use strict";
+  var STORE_KEY = "wpd2026_overrides_v1";
+  var RAW = (window.DASHBOARD_DATA && window.DASHBOARD_DATA.tasks) || [];
+  var META = (window.DASHBOARD_DATA && window.DASHBOARD_DATA.meta) || {};
+
+  // ---- overrides (localStorage) ----
+  function loadOverrides(){
+    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
+    catch(e){ return {}; }
+  }
+  function saveOverrides(o){ localStorage.setItem(STORE_KEY, JSON.stringify(o)); }
+  var overrides = loadOverrides();
+
+  // merge raw + overrides into live tasks
+  function buildTasks(){
+    return RAW.map(function(t){
+      var o = overrides[t.id];
+      var m = Object.assign({}, t, {_modified:false});
+      if(o){
+        if(o.status!=null) m.status = o.status;
+        if(o.ratio!=null) m.ratio = o.ratio;
+        if(o.content!=null) m.content = o.content;
+        m._modified = true;
+      }
+      return m;
+    });
+  }
+  var TASKS = buildTasks();
+
+  // ---- helpers ----
+  var STATUS_META = {
+    "추진완료":{cls:"st-done", color:"#0f766e", label:"추진완료"},
+    "추진중":{cls:"st-prog", color:"#d97706", label:"추진중"},
+    "추진예정":{cls:"st-plan", color:"#6b7280", label:"추진예정"}
+  };
+  function stMeta(s){ return STATUS_META[s] || STATUS_META["추진중"]; }
+  function pct(r){ return Math.round((r||0)*100); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+  function barColor(r){ return r>=1?"#0f766e":(r>=0.5?"#0d9488":(r>=0.25?"#d97706":"#dc2626")); }
+
+  // ---- KPI ----
+  function renderKPIs(){
+    var total = TASKS.length;
+    var done = TASKS.filter(function(t){return t.status==="추진완료";}).length;
+    var prog = TASKS.filter(function(t){return t.status==="추진중";}).length;
+    var avg = total? TASKS.reduce(function(a,t){return a+(t.ratio||0);},0)/total : 0;
+    var completionRate = total? done/total : 0;
+    var el = document.getElementById("kpis");
+    el.innerHTML = [
+      kpiCard("전체 과제", total+"<small>건</small>", (META.as_of||"")+" 기준", null),
+      kpiCard("평균 이행률", pct(avg)+"<small>%</small>", "전 부서 과제 이행률 평균", avg),
+      kpiCard("추진완료", done+"<small>건</small>", "완료율 "+pct(completionRate)+"%", completionRate),
+      kpiCard("추진중", prog+"<small>건</small>", "진행 중인 과제", prog/(total||1))
+    ].join("");
+  }
+  function kpiCard(lbl,val,sub,bar){
+    var b = bar==null ? "" : '<div class="bar"><i style="width:'+pct(bar)+'%"></i></div>';
+    return '<div class="kpi"><p class="lbl">'+lbl+'</p>'+
+      '<div class="val tnum">'+val+'</div>'+
+      '<div class="sub">'+sub+'</div>'+b+'</div>';
+  }
+
+  // ---- dept stats ----
+  function deptStats(){
+    var map = {};
+    TASKS.forEach(function(t){
+      var d = map[t.dept] || (map[t.dept]={dept:t.dept,n:0,done:0,sum:0});
+      d.n++; d.sum += (t.ratio||0);
+      if(t.status==="추진완료") d.done++;
+    });
+    return Object.keys(map).map(function(k){
+      var d=map[k]; d.avg = d.n? d.sum/d.n : 0; return d;
+    }).sort(function(a,b){return b.avg-a.avg;});
+  }
+
+  // ---- charts ----
+  var deptChartObj, statusChartObj;
+  function renderCharts(){
+    var ds = deptStats();
+    var ctx1 = document.getElementById("deptChart").getContext("2d");
+    if(deptChartObj) deptChartObj.destroy();
+    deptChartObj = new Chart(ctx1,{
+      type:"bar",
+      data:{ labels: ds.map(function(d){return d.dept;}),
+        datasets:[{ label:"평균 이행률(%)", data: ds.map(function(d){return pct(d.avg);}),
+          backgroundColor: ds.map(function(d){return barColor(d.avg);}),
+          borderRadius:6, maxBarThickness:34 }]},
+      options:{ indexAxis:"y", responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false},
+          tooltip:{callbacks:{ label:function(c){
+            var d=ds[c.dataIndex];
+            return " 이행률 "+c.parsed.x+"% · 완료 "+d.done+"/"+d.n+"건"; }}}},
+        scales:{ x:{min:0,max:100,ticks:{callback:function(v){return v+"%";},font:{size:11}},
+            grid:{color:"rgba(24,24,27,.06)"}},
+          y:{grid:{display:false},ticks:{font:{size:12.5}}} } }
+    });
+
+    // status donut
+    var order=["추진완료","추진중","추진예정"];
+    var counts = order.map(function(s){return TASKS.filter(function(t){return t.status===s;}).length;});
+    var ctx2 = document.getElementById("statusChart").getContext("2d");
+    if(statusChartObj) statusChartObj.destroy();
+    statusChartObj = new Chart(ctx2,{
+      type:"doughnut",
+      data:{labels:order,datasets:[{data:counts,
+        backgroundColor:order.map(function(s){return stMeta(s).color;}),
+        borderWidth:2, borderColor:"#fff"}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:"66%",
+        plugins:{legend:{display:false},
+          tooltip:{callbacks:{label:function(c){
+            var tot=counts.reduce(function(a,b){return a+b;},0);
+            return " "+c.label+" "+c.parsed+"건 ("+Math.round(c.parsed/tot*100)+"%)"; }}}}}
+    });
+    // legend
+    var tot = counts.reduce(function(a,b){return a+b;},0);
+    document.getElementById("statusLegend").innerHTML = order.map(function(s,i){
+      return '<li><span class="dot" style="background:'+stMeta(s).color+'"></span>'+
+        '<span class="nm">'+s+'</span>'+
+        '<span class="ct tnum">'+counts[i]+'</span>'+
+        '<span class="pc tnum">'+(tot?Math.round(counts[i]/tot*100):0)+'%</span></li>';
+    }).join("");
+  }
+
+  // ---- filters/list ----
+  function currentFilters(){
+    return {
+      q: document.getElementById("q").value.trim().toLowerCase(),
+      dept: document.getElementById("fDept").value,
+      status: document.getElementById("fStatus").value,
+      sort: document.getElementById("fSort").value
+    };
+  }
+  function applyFilters(){
+    var f = currentFilters();
+    var rows = TASKS.filter(function(t){
+      if(f.dept && t.dept!==f.dept) return false;
+      if(f.status && t.status!==f.status) return false;
+      if(f.q){
+        var hay=(t.task+" "+t.goal+" "+t.strategy+" "+t.content+" "+t.dept).toLowerCase();
+        if(hay.indexOf(f.q)<0) return false;
+      }
+      return true;
+    });
+    if(f.sort==="ratio-desc") rows.sort(function(a,b){return b.ratio-a.ratio;});
+    else if(f.sort==="ratio-asc") rows.sort(function(a,b){return a.ratio-b.ratio;});
+    else if(f.sort==="dept") rows.sort(function(a,b){return a.dept.localeCompare(b.dept,"ko")|| b.ratio-a.ratio;});
+    return rows;
+  }
+  function renderList(){
+    var rows = applyFilters();
+    var el = document.getElementById("taskList");
+    document.getElementById("countNote").textContent = rows.length+"건 표시 / 전체 "+TASKS.length+"건";
+    if(!rows.length){ el.innerHTML='<div class="empty">조건에 맞는 과제가 없습니다.</div>'; return; }
+    el.innerHTML = rows.map(function(t){
+      var sm = stMeta(t.status);
+      var path = [t.goal,t.strategy].filter(Boolean).map(esc).join(" › ");
+      var content = t.content ? '<p class="content"><b>추진내용</b> · '+esc(t.content)+'</p>' : "";
+      var docn = t.doc_no ? '<p class="docn">문서 '+esc(t.doc_no)+(t.date?' · '+esc(t.date):"")+'</p>'
+                 : (t.date?'<p class="docn">'+esc(t.date)+'</p>':"");
+      var mod = t._modified ? ' <span class="modified-badge">수정됨</span>' : "";
+      return '<div class="trow">'+
+        '<div class="main">'+
+          '<div class="meta">'+
+            '<span class="tag dept">'+esc(t.dept)+'</span>'+
+            '<span class="tag cat">'+esc(t.category)+'</span>'+
+            (t.weight?'<span class="tag">배점 '+t.weight+'</span>':"")+
+          '</div>'+
+          '<p class="ttl">'+esc(t.task)+mod+'</p>'+
+          (path?'<p class="path">'+path+'</p>':"")+
+          content+docn+
+        '</div>'+
+        '<div class="prog-col">'+
+          '<span class="status-pill '+sm.cls+'">'+sm.label+'</span>'+
+          '<div class="pline">'+
+            '<div class="top"><span>이행률</span><b class="tnum">'+pct(t.ratio)+'%</b></div>'+
+            '<div class="ptrack"><i style="width:'+pct(t.ratio)+'%;background:'+barColor(t.ratio)+'"></i></div>'+
+          '</div>'+
+          '<button class="edit-link" data-id="'+t.id+'">진행 수정 ›</button>'+
+        '</div>'+
+      '</div>';
+    }).join("");
+    // bind edit
+    Array.prototype.forEach.call(el.querySelectorAll(".edit-link"),function(b){
+      b.addEventListener("click",function(){ openModal(+b.getAttribute("data-id")); });
+    });
+  }
+
+  // ---- dept select options ----
+  function fillDeptOptions(){
+    var depts = deptStats().map(function(d){return d.dept;});
+    // keep source order-ish by name
+    var uniq = Array.from(new Set(TASKS.map(function(t){return t.dept;})));
+    var sel = document.getElementById("fDept");
+    uniq.forEach(function(d){
+      var o=document.createElement("option"); o.value=d; o.textContent=d; sel.appendChild(o);
+    });
+  }
+
+  // ---- modal ----
+  var editingId=null;
+  function openModal(id){
+    var t = TASKS.filter(function(x){return x.id===id;})[0]; if(!t) return;
+    editingId=id;
+    document.getElementById("mTitle").textContent = t.task;
+    document.getElementById("mPath").textContent = t.dept + " · " + [t.goal,t.strategy].filter(Boolean).join(" › ");
+    document.getElementById("mStatus").value = t.status;
+    var r = pct(t.ratio);
+    document.getElementById("mRatio").value = r;
+    document.getElementById("mRatioOut").textContent = r+"%";
+    document.getElementById("mContent").value = t.content||"";
+    document.getElementById("modalBg").classList.add("on");
+  }
+  function closeModal(){ document.getElementById("modalBg").classList.remove("on"); editingId=null; }
+  function saveModal(){
+    if(editingId==null) return;
+    var status = document.getElementById("mStatus").value;
+    var ratio = (+document.getElementById("mRatio").value)/100;
+    var content = document.getElementById("mContent").value;
+    var base = RAW.filter(function(x){return x.id===editingId;})[0];
+    // store override; if identical to original, drop it
+    var o = {};
+    if(status!==base.status) o.status=status;
+    if(ratio!==base.ratio) o.ratio=ratio;
+    if(content!==(base.content||"")) o.content=content;
+    if(Object.keys(o).length){ overrides[editingId]=o; }
+    else { delete overrides[editingId]; }
+    saveOverrides(overrides);
+    TASKS = buildTasks();
+    closeModal();
+    refreshAll();
+  }
+
+  // ---- CSV export ----
+  function exportCSV(){
+    var head=["부서","경영목표","전략과제","사업구분","추진과제","배점","추진상태","이행률(%)","점수","추진내용","문서번호","추진일","비고"];
+    var lines=[head];
+    applyFilters().forEach(function(t){
+      lines.push([t.dept,t.goal,t.strategy,t.category,t.task,t.weight,t.status,pct(t.ratio),t.score,t.content,t.doc_no,t.date,t.note]);
+    });
+    var csv="\uFEFF"+lines.map(function(r){
+      return r.map(function(c){
+        c=(c==null?"":String(c));
+        return /[",\n]/.test(c) ? '"'+c.replace(/"/g,'""')+'"' : c;
+      }).join(",");
+    }).join("\r\n");
+    var blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+    var a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);
+    a.download="2026_주요업무_추진현황.csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+
+  // ---- refresh ----
+  function refreshAll(){ renderKPIs(); renderCharts(); renderList(); }
+
+  // ---- init ----
+  function init(){
+    document.getElementById("metaline").textContent =
+      (META.source||"주요업무계획") + " · " + (META.as_of||"") + " 기준 · 총 " + TASKS.length + "개 과제";
+    document.getElementById("footer").innerHTML =
+      "데이터 출처: "+esc(META.source||"")+" &nbsp;·&nbsp; 수정한 진행상황은 이 브라우저에 자동 저장됩니다.";
+    fillDeptOptions();
+    refreshAll();
+    // events
+    ["q","fDept","fStatus","fSort"].forEach(function(id){
+      var e=document.getElementById(id);
+      e.addEventListener("input",renderList);
+      e.addEventListener("change",renderList);
+    });
+    document.getElementById("btnExport").addEventListener("click",exportCSV);
+    document.getElementById("btnReset").addEventListener("click",function(){
+      if(!Object.keys(overrides).length){ alert("수정한 진행상황이 없습니다."); return; }
+      if(confirm("직접 수정한 진행상황을 모두 원본 데이터로 되돌릴까요?")){
+        overrides={}; saveOverrides(overrides); TASKS=buildTasks(); refreshAll();
+      }
+    });
+    document.getElementById("mRatio").addEventListener("input",function(){
+      document.getElementById("mRatioOut").textContent=this.value+"%";
+    });
+    document.getElementById("mStatus").addEventListener("change",function(){
+      // convenience: 완료 선택 시 100%, 예정 선택 시 0%
+      if(this.value==="추진완료"){ document.getElementById("mRatio").value=100; document.getElementById("mRatioOut").textContent="100%"; }
+      if(this.value==="추진예정"){ document.getElementById("mRatio").value=0; document.getElementById("mRatioOut").textContent="0%"; }
+    });
+    document.getElementById("mCancel").addEventListener("click",closeModal);
+    document.getElementById("mSave").addEventListener("click",saveModal);
+    document.getElementById("modalBg").addEventListener("click",function(e){
+      if(e.target===this) closeModal();
+    });
+    document.addEventListener("keydown",function(e){ if(e.key==="Escape") closeModal(); });
+  }
+
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",init);
+  else init();
+})();
+</script>
+</body>
+</html>
